@@ -195,7 +195,7 @@ static void commit_log_print_insn_new(processor_t *p, reg_t pc, insn_t insn)
     fprintf(log_file, "\n");
     
     // 打印执行前的CSR寄存器值，全部使用十六进制格式
-    fprintf(log_file, " before:[0x%016" PRIx64 ",0x%x,0x%02" PRIx32 ",0x%02" PRIx64 ",0x%02" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 "]",
+    fprintf(log_file, "before:[0x%016" PRIx64 ",0x%x,0x%02" PRIx32 ",0x%02" PRIx64 ",0x%02" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 "]",
             p->last_csr_values["mstatus"],
             (unsigned int)p->last_csr_values["frm"],
             (uint32_t)p->last_csr_values["fflags"],
@@ -207,7 +207,7 @@ static void commit_log_print_insn_new(processor_t *p, reg_t pc, insn_t insn)
             p->last_csr_values["dcsr"]);
     fprintf(log_file, "\n");
     // 打印执行后的CSR寄存器值，全部使用十六进制格式
-    fprintf(log_file, " after:[0x%016" PRIx64 ",0x%x,0x%02" PRIx32 ",0x%02" PRIx64 ",0x%02" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 "]",
+    fprintf(log_file, "after:[0x%016" PRIx64 ",0x%x,0x%02" PRIx32 ",0x%02" PRIx64 ",0x%02" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 ",0x%08" PRIx64 "]",
             current_csr_values["mstatus"],
             (unsigned int)current_csr_values["frm"],
             (uint32_t)current_csr_values["fflags"],
@@ -425,7 +425,10 @@ void processor_t::step(size_t n)
     }
     catch(trap_t& t)
     {
-      take_trap(t, pc);
+      if(coverage)
+        take_trap_new(t, pc);
+      else
+        take_trap(t, pc);
       n = instret;
 
       // Trigger action takes priority over single step

@@ -343,16 +343,56 @@ dcsr (调试控制和状态寄存器)
   │  └─────────────────────────────────── 特权级(3=M模式)
   └────────────────────────────────────── 核心ID(core 0)
 
+- Debug Cmd
+(spike) help
+# Interactive commands:
+- `reg <core> [reg]` - Display [reg] (all if omitted) in <core>
+- `freg <core> <reg>` - Display float <reg> in <core> as hex
+- `fregh <core> <reg>` - Display half precision <reg> in <core>
+- `fregs <core> <reg>` - Display single precision <reg> in <core>
+- `fregd <core> <reg>` - Display double precision <reg> in <core>
+- `vreg <core> [reg]` - Display vector [reg] (all if omitted) in <core>
+- `pc <core>` - Show current PC in <core>
+- `priv <core>` - Show current privilege level in <core>
+- `mem [core] <hex addr>` - Show contents of virtual memory <hex addr> in [core] (physical memory <hex addr> if omitted)
+- `str [core] <hex addr>` - Show NUL-terminated C string at virtual address <hex addr> in [core] (physical address <hex addr> if omitted)
+- `dump` - Dump physical memory to binary files
+- `mtime` - Show mtime
+- `mtimecmp <core>` - Show mtimecmp for <core>
+- `until reg <core> <reg> <val>` - Stop when <reg> in <core> hits <val>
+- `untiln reg <core> <reg> <val>` - Run noisy and stop when <reg> in <core> hits <val>
+- `until pc <core> <val>` - Stop when PC in <core> hits <val>
+- `untiln pc <core> <val>` - Run noisy and stop when PC in <core> hits <val>
+- `until mem [core] <addr> <val>` - Stop when virtual memory <addr> in [core] (physical address <addr> if omitted) becomes <val>
+- `untiln mem [core] <addr> <val>` - Run noisy and stop when virtual memory <addr> in [core] (physical address <addr> if omitted) becomes <val>
+- `while reg <core> <reg> <val>` - Run while <reg> in <core> is <val>
+- `while pc <core> <val>` - Run while PC in <core> is <val>
+- `while mem [core] <addr> <val>` - Run while virtual memory <addr> in [core] (physical memory <addr> if omitted) is <val>
+- `run [count]` - Resume noisy execution (until CTRL+C, or [count] insns)
+- `r [count]` - Alias for run
+- `rs [count]` - Resume silent execution (until CTRL+C, or [count] insns)
+- `quit` - End the simulation
+- `q` - Alias for quit
+- `help` - This screen!
+- `h` - Alias for help
+
+**Note**: Hitting enter is the same as: `run 1`
 - Test Spike cmd demo 
 --log-commits 
 ./spike -d --debug-cmd=/home/ywangmu/Proj/ToolRef/cascade-processorfuzz/shareddata/dbgcmds/debug_cmd_0.txt --pc=2147483648 -l --log=spike_cascade_test_rocket0.log /home/ywangmu/Proj/ToolRef/cascade-processorfuzz/shareddata/manyelfs/rocket_0.elf
 
 ./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34.cmd --pc=2147483648 -l -c --log-commits --log=/cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34_csr.log /cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34.elf
 
-./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/dbgcmds/cmds_trace_regs_at_pc_locs_784213_rocket_8904673_34 --pc=2147483648 -l -c --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_csr.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
+./spike -d --debug-cmd=../../cascade-processorfuzz/shareddata/mylocaldata/dbgcmds/cmds_trace_regs_at_pc_locs_784213_rocket_8904673_34 --pc=2147483648 -l -c --log-commits --log=/../../cascade-processorfuzz/shareddata/mylocaldata/Interspikeresol784213_rocket_8904673_34_csr.log ../../cascade-processorfuzz/shareddata/mylocaldata/spikeresol784213_rocket_8904673_34.elf
 
 ./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/dbgcmds/cmds_trace_regs_at_pc_locs_784213_rocket_8904673_34 --pc=2147483648 -l --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_full.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
 
 ./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34.cmd --pc=2147483648 -l --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_all_simple.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
 
 ./spike -d --pc=2147483648 -l --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_all_simple.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
+
+
+
+- Cached Prompt
+
+现在根据这个函数，给我一个take_trap_new函数，可以字符串s中追加打印state. 类似这样的CSR的值以及执行的指令信息

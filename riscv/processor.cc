@@ -866,6 +866,149 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
   }
 }
 
+
+void processor_t::take_trap_new(trap_t& t, reg_t epc)
+{
+  unsigned max_xlen = isa->get_max_xlen();
+
+  if (debug) {
+    std::stringstream s; // first put everything in a string, later send it to output
+    //首先输出抛出trap的指令的disasm 部分 1st line
+    if (last_disasm_output.length() > 0) { s << last_disasm_output;}
+    // 输出trap信息 2nd line
+    s << "Exception " << t.name() << ", epc 0x" << std::hex << std::setfill('0') << std::setw(max_xlen/4) << zext(epc, max_xlen);
+    if (t.has_tval())
+       s << " tval 0x" << std::hex << std::setfill('0') << std::setw(max_xlen / 4)
+         << zext(t.get_tval(), max_xlen) << std::endl; 
+    else
+      s << std::endl;
+    // 增加CSR寄存器值输出 3rd line
+    s << "before:[0x"
+      << std::hex << std::setfill('0') << std::setw(16) << last_csr_values["mstatus"] << ",0x"
+      << std::setw(1) << (unsigned int)last_csr_values["frm"] << ",0x"
+      << std::setw(2) << (uint32_t)last_csr_values["fflags"] << ",0x"
+      << std::setw(16) << last_csr_values["mcause"] << ",0x"
+      << std::setw(16) << last_csr_values["scause"] << ",0x"
+      << std::setw(8) << last_csr_values["medeleg"] << ",0x"
+      << std::setw(8) << last_csr_values["mcounteren"] << ",0x"
+      << std::setw(8) << last_csr_values["scounteren"] << ",0x"
+      << std::setw(8) << last_csr_values["dcsr"] << "]" << std::endl;
+    
+    // 获取当前CSR值
+    std::map<std::string, reg_t> current_csr_values;
+    current_csr_values["mstatus"] = state.mstatus->read();
+    current_csr_values["frm"] = state.frm->read();
+    current_csr_values["fflags"] = state.fflags->read();
+    current_csr_values["mcause"] = state.mcause->read();
+    current_csr_values["scause"] = state.scause->read();
+    current_csr_values["medeleg"] = state.medeleg->read();
+    current_csr_values["mcounteren"] = state.mcounteren->read();
+    current_csr_values["scounteren"] = state.scounteren->read();
+    current_csr_values["dcsr"] = state.dcsr->read();
+    // 输出trap后的CSR寄存器值 4th line
+    s << "after:[0x"
+      << std::hex << std::setfill('0') << std::setw(16) << current_csr_values["mstatus"] << ",0x"
+      << std::setw(1) << (unsigned int)current_csr_values["frm"] << ",0x"
+      << std::setw(2) << (uint32_t)current_csr_values["fflags"] << ",0x"
+      << std::setw(16) << current_csr_values["mcause"] << ",0x"
+      << std::setw(16) << current_csr_values["scause"] << ",0x"
+      << std::setw(8) << current_csr_values["medeleg"] << ",0x"
+      << std::setw(8) << current_csr_values["mcounteren"] << ",0x"
+      << std::setw(8) << current_csr_values["scounteren"] << ",0x"
+      << std::setw(8) << current_csr_values["dcsr"] << "]" << std::endl;
+    
+    debug_output_log(&s);
+
+  }
+
+  if (state.debug_mode) {
+    if (t.cause() == CAUSE_BREAKPOINT) {
+      state.pc = DEBUG_ROM_ENTRY;
+    } else {
+      state.pc = DEBUG_ROM_TVEC;
+    }
+    return;
+  }
+
+  // By default, trap to M-mode, unless delegated to HS-mode or VS-mode
+  reg_t vsdeleg, hsdeleg;
+  reg_t bit = t.cause();
+  bool curr_virt = state.v;
+  bool interrupt = (bit & ((reg_t)1 << (max_xlen - 1))) != 0;
+  if (interrupt) {
+    vsdeleg = (curr_virt && state.prv <= PRV_S) ? state.hideleg->read() : 0;
+    hsdeleg = (state.prv <= PRV_S) ? state.mideleg->read() : 0;
+    bit &= ~((reg_t)1 << (max_xlen - 1));
+  } else {
+    vsdeleg = (curr_virt && state.prv <= PRV_S) ? (state.medeleg->read() & state.hedeleg->read()) : 0;
+    hsdeleg = (state.prv <= PRV_S) ? state.medeleg->read() : 0;
+  }
+  if (state.prv <= PRV_S && bit < max_xlen && ((vsdeleg >> bit) & 1)) {
+    // Handle the trap in VS-mode
+    reg_t vector = (state.vstvec->read() & 1) && interrupt ? 4 * bit : 0;
+    state.pc = (state.vstvec->read() & ~(reg_t)1) + vector;
+    state.vscause->write((interrupt) ? (t.cause() - 1) : t.cause());
+    state.vsepc->write(epc);
+    state.vstval->write(t.get_tval());
+
+    reg_t s = state.sstatus->read();
+    s = set_field(s, MSTATUS_SPIE, get_field(s, MSTATUS_SIE));
+    s = set_field(s, MSTATUS_SPP, state.prv);
+    s = set_field(s, MSTATUS_SIE, 0);
+    state.sstatus->write(s);
+    set_privilege(PRV_S, true);
+  } else if (state.prv <= PRV_S && bit < max_xlen && ((hsdeleg >> bit) & 1)) {
+    // Handle the trap in HS-mode
+    reg_t vector = (state.nonvirtual_stvec->read() & 1) && interrupt ? 4 * bit : 0;
+    state.pc = (state.nonvirtual_stvec->read() & ~(reg_t)1) + vector;
+    state.nonvirtual_scause->write(t.cause());
+    state.nonvirtual_sepc->write(epc);
+    state.nonvirtual_stval->write(t.get_tval());
+    state.htval->write(t.get_tval2());
+    state.htinst->write(t.get_tinst());
+
+    reg_t s = state.nonvirtual_sstatus->read();
+    s = set_field(s, MSTATUS_SPIE, get_field(s, MSTATUS_SIE));
+    s = set_field(s, MSTATUS_SPP, state.prv);
+    s = set_field(s, MSTATUS_SIE, 0);
+    state.nonvirtual_sstatus->write(s);
+    if (extension_enabled('H')) {
+      s = state.hstatus->read();
+      if (curr_virt)
+        s = set_field(s, HSTATUS_SPVP, state.prv);
+      s = set_field(s, HSTATUS_SPV, curr_virt);
+      s = set_field(s, HSTATUS_GVA, t.has_gva());
+      state.hstatus->write(s);
+    }
+    set_privilege(PRV_S, false);
+  } else {
+    // Handle the trap in M-mode
+    const reg_t vector = (state.mtvec->read() & 1) && interrupt ? 4 * bit : 0;
+    const reg_t trap_handler_address = (state.mtvec->read() & ~(reg_t)1) + vector;
+    // RNMI exception vector is implementation-defined.  Since we don't model
+    // RNMI sources, the feature isn't very useful, so pick an invalid address.
+    const reg_t rnmi_trap_handler_address = 0;
+    const bool nmie = !(state.mnstatus && !get_field(state.mnstatus->read(), MNSTATUS_NMIE));
+    state.pc = !nmie ? rnmi_trap_handler_address : trap_handler_address;
+    state.mepc->write(epc);
+    state.mcause->write(t.cause());
+    state.mtval->write(t.get_tval());
+    state.mtval2->write(t.get_tval2());
+    state.mtinst->write(t.get_tinst());
+
+    reg_t s = state.mstatus->read();
+    s = set_field(s, MSTATUS_MPIE, get_field(s, MSTATUS_MIE));
+    s = set_field(s, MSTATUS_MPP, state.prv);
+    s = set_field(s, MSTATUS_MIE, 0);
+    s = set_field(s, MSTATUS_MPV, curr_virt);
+    s = set_field(s, MSTATUS_GVA, t.has_gva());
+    state.mstatus->write(s);
+    if (state.mstatush) state.mstatush->write(s >> 32);  // log mstatush change
+    set_privilege(PRV_M, false);
+  }
+}
+
+
 void processor_t::take_trigger_action(triggers::action_t action, reg_t breakpoint_tval, reg_t epc, bool virt)
 {
   if (debug) {
@@ -939,6 +1082,7 @@ void processor_t::disasm_new(insn_t insn)
   uint64_t bits = insn.bits();
   if (last_pc != state.pc || last_bits != bits) {
     std::stringstream s;  // first put everything in a string, later send it to output
+    std::stringstream commit_s;
 
     const char* sym = get_symbol(state.pc);
     if (sym != nullptr)
@@ -974,8 +1118,13 @@ void processor_t::disasm_new(insn_t insn)
     last_bits = bits;
     executions = 1;
 
-    // 保存当前disasm输出
-    last_disasm_output = s.str();
+    commit_s << "core " << std::dec << std::setfill(' ') << std::setw(3) << id
+      << std::hex << ": 0x" << std::setfill('0') << std::setw(max_xlen/4)
+      << zext(state.pc, max_xlen) 
+      << " (0x" << std::setw(8) << bits << ") " 
+      << disassembler->disassemble(insn) << std::endl;
+    // 保存当前disasm 部分输出
+    last_disasm_output = commit_s.str();
     
     // 保存当前CSR值
     last_csr_values["mstatus"] = state.mstatus->read();

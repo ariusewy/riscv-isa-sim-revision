@@ -344,6 +344,7 @@ private:
   void take_pending_interrupt() { take_interrupt(state.mip->read() & state.mie->read()); }
   void take_interrupt(reg_t mask); // take first enabled interrupt in mask
   void take_trap(trap_t& t, reg_t epc); // take an exception
+  void take_trap_new(trap_t& t, reg_t epc); // 新增函数
   void take_trigger_action(triggers::action_t action, reg_t breakpoint_tval, reg_t epc, bool virt);
   void disasm(insn_t insn); // disassemble and print an instruction
   void disasm_new(insn_t insn); // 新增函数

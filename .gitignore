@@ -1,0 +1,12 @@
+build/
+local/*
+local/include/*
+local/lib/*
+*.gch
+autom4te.cache/
+.*.swp
+*.o
+*.d
+.gdb_history
+.#*
+*~

@@ -343,6 +343,16 @@ dcsr (调试控制和状态寄存器)
   │  └─────────────────────────────────── 特权级(3=M模式)
   └────────────────────────────────────── 核心ID(core 0)
 
-- Test Spike
+- Test Spike cmd demo 
 --log-commits 
 ./spike -d --debug-cmd=/home/ywangmu/Proj/ToolRef/cascade-processorfuzz/shareddata/dbgcmds/debug_cmd_0.txt --pc=2147483648 -l --log=spike_cascade_test_rocket0.log /home/ywangmu/Proj/ToolRef/cascade-processorfuzz/shareddata/manyelfs/rocket_0.elf
+
+./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34.cmd --pc=2147483648 -l -c --log-commits --log=/cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34_csr.log /cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34.elf
+
+./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/dbgcmds/cmds_trace_regs_at_pc_locs_784213_rocket_8904673_34 --pc=2147483648 -l -c --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_csr.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
+
+./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/dbgcmds/cmds_trace_regs_at_pc_locs_784213_rocket_8904673_34 --pc=2147483648 -l --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_full.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
+
+./spike -d --debug-cmd=/cascade-meta/fuzzer/mylocaldata/rtl784213_rocket_8904673_34.cmd --pc=2147483648 -l --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_all_simple.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf
+
+./spike -d --pc=2147483648 -l --log-commits --log=/cascade-meta/fuzzer/mylocaldata/Interspikeresol784213_rocket_8904673_34_all_simple.log /cascade-meta/fuzzer/mylocaldata/spikeresol784213_rocket_8904673_34.elf

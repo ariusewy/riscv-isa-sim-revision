@@ -1,7 +1,5 @@
 build/
-local/*
-local/include/*
-local/lib/*
+local/
 *.gch
 autom4te.cache/
 .*.swp
